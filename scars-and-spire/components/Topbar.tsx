@@ -4,6 +4,7 @@ import type { Character } from '@/types/game';
 
 interface TopbarProps {
   character: Character;
+  onOpenCodex: () => void;
 }
 
 const TENSION_COLOR = (t: number) => {
@@ -20,7 +21,7 @@ const TENSION_LABEL = (t: number) => {
   return 'Breaking Point';
 };
 
-export default function Topbar({ character }: TopbarProps) {
+export default function Topbar({ character, onOpenCodex }: TopbarProps) {
   const { name, level, levelTitle, tension, tags, theme } = character;
   const perks = tags.filter((t) => t.type === 'perk');
   const scars = tags.filter((t) => t.type === 'scar');
@@ -45,7 +46,7 @@ export default function Topbar({ character }: TopbarProps) {
         </div>
       </div>
 
-      {/* Center: Tags */}
+      {/* Center: Tags (hidden on mobile) */}
       <div className="hidden md:flex items-center gap-1.5 flex-wrap justify-center">
         {perks.map((tag) => (
           <span key={tag.name} className="tag tag--perk" title={tag.description}>
@@ -64,40 +65,53 @@ export default function Topbar({ character }: TopbarProps) {
         ))}
       </div>
 
-      {/* Right: Tension meter */}
-      <div className="flex flex-col items-end gap-1 shrink-0 min-w-[140px]">
-        <div className="flex items-center gap-2 w-full justify-end">
-          <span className="text-xs text-muted uppercase tracking-widest">Tension</span>
-          <span
-            className={`text-xs font-bold uppercase tracking-wide ${
-              tension >= 80 ? 'text-crimson animate-pulse' : tension >= 60 ? 'text-orange-400' : 'text-muted'
-            }`}
-          >
-            {TENSION_LABEL(tension)}
-          </span>
-          <span className="text-xs font-mono text-bone">{tension}%</span>
-        </div>
-        <div
-          className="tension-track"
-          role="progressbar"
-          aria-valuenow={tension}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`Tension: ${tension}%`}
-        >
+      {/* Right: Tension meter + Codex button */}
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col items-end gap-1 min-w-[140px]">
+          <div className="flex items-center gap-2 w-full justify-end">
+            <span className="text-xs text-muted uppercase tracking-widest">Tension</span>
+            <span
+              className={`text-xs font-bold uppercase tracking-wide ${
+                tension >= 80 ? 'text-crimson animate-pulse' : tension >= 60 ? 'text-orange-400' : 'text-muted'
+              }`}
+            >
+              {TENSION_LABEL(tension)}
+            </span>
+            <span className="text-xs font-mono text-bone">{tension}%</span>
+          </div>
           <div
-            className={`tension-fill ${TENSION_COLOR(tension)}`}
-            style={{ width: `${tension}%` }}
-          />
-          {/* tick marks */}
-          {[33, 60, 80].map((mark) => (
+            className="tension-track"
+            role="progressbar"
+            aria-valuenow={tension}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Tension: ${tension}%`}
+          >
             <div
-              key={mark}
-              className="tension-tick"
-              style={{ left: `${mark}%` }}
+              className={`tension-fill ${TENSION_COLOR(tension)}`}
+              style={{ width: `${tension}%` }}
             />
-          ))}
+            {/* tick marks */}
+            {[33, 60, 80].map((mark) => (
+              <div
+                key={mark}
+                className="tension-tick"
+                style={{ left: `${mark}%` }}
+              />
+            ))}
+          </div>
         </div>
+
+        {/* Codex button */}
+        <button
+          id="codex-open-btn"
+          className="codex-open-btn"
+          onClick={onOpenCodex}
+          aria-label="Open Character Codex"
+          title="Character Codex (Perks, Scars, Titles)"
+        >
+          📖
+        </button>
       </div>
     </header>
   );

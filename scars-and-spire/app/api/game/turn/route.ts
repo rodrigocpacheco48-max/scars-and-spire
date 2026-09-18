@@ -72,8 +72,8 @@ function buildSystemPrompt(body: TurnRequestBody): string {
     character.tension >= 80
       ? 'CRITICAL - near breaking point'
       : character.tension >= 50
-      ? 'HIGH - fraying at the edges'
-      : 'manageable';
+        ? 'HIGH - fraying at the edges'
+        : 'manageable';
 
   return `You are the narrator of SCARS & SPIRE, a dark narrative RPG.
 Your prose is cinematic, terse, and atmospheric - never whimsical or verbose.
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       .join('\n\n');
 
     const { object } = await generateObject({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-3.6-flash'),
       schema: TurnResponseSchema,
       system: buildSystemPrompt(body),
       prompt: userMessage,

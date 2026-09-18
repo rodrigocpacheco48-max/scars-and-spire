@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { GameState, Character, LogEntry, Tag, SceneMeta } from '@/types/game';
 import { LEVEL_TITLES } from '@/types/game';
 import {
@@ -12,6 +12,7 @@ import {
   getArchetypesByTheme,
   getScarsByTheme,
 } from '@/lib/gameData';
+import { saveGame, loadGame, clearSave } from '@/lib/persistence';
 import type { TurnRequestBody, TurnResponse } from '@/app/api/game/turn/route';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -32,6 +33,11 @@ const INITIAL_STATE: GameState = {
   contract: CONTRACTS[0],
 };
 
+// ─── Chronicle trigger threshold ─────────────────────────────────────────────
+// Act 3 concludes when tension reaches this value OR after MAX_TURNS choices.
+const CHRONICLE_TENSION_THRESHOLD = 95;
+const MAX_TURNS = 20;
+
 // ─── Sliding Window ──────────────────────────────────────────────────────────
 // We keep only the last WINDOW_SIZE player+narrator pairs to send to the API.
 const WINDOW_SIZE = 2;
@@ -48,37 +54,88 @@ export function useGameStore() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sceneMeta, setSceneMeta] = useState<SceneMeta | null>(null);
+  const [hasSave, setHasSave] = useState(false);
 
   // Always-current ref so async callbacks don't close over stale state
   const stateRef = useRef<GameState>(INITIAL_STATE);
+  const turnCountRef = useRef(0);
+
   const setStateSynced = useCallback((updater: (prev: GameState) => GameState) => {
     setState((prev) => {
       const next = updater(prev);
       stateRef.current = next;
+      // Auto-save whenever we're in a resumable phase
+      if (next.phase === 'playing' || next.phase === 'chronicle') {
+        saveGame(next);
+      }
       return next;
     });
+  }, []);
+
+  // ── Hydrate from localStorage on mount ────────────────────────────────────
+  useEffect(() => {
+    const saved = loadGame();
+    if (saved) {
+      setHasSave(true);
+      // Restore sliding window length from log (rough estimate)
+      turnCountRef.current = Math.floor(
+        saved.log.filter((e) => e.kind === 'choice').length
+      );
+      stateRef.current = saved;
+      setState(saved);
+    }
   }, []);
 
   // Sliding window history (not part of GameState to avoid re-renders)
   const historyRef = useRef<HistoryEntry[]>([]);
 
+  // ── Chronicle transition helper ────────────────────────────────────────────
+  const triggerChronicle = useCallback(() => {
+    setStateSynced((prev) => {
+      const concludingLog: LogEntry[] = [
+        ...prev.log,
+        makeLogEntry(
+          'consequence',
+          '✦ The tale is complete. Your legend is sealed in the Chronicle.'
+        ),
+      ];
+      const next: GameState = { ...prev, phase: 'chronicle', log: concludingLog };
+      return next;
+    });
+  }, [setStateSynced]);
+
   // ── Start game ─────────────────────────────────────────────────────────────
-  const startGame = useCallback((character: Character) => {
-    historyRef.current = [];
-    const openingText = OPENING_NARRATIVES[character.theme];
-    const choices = MOCK_CHOICES[character.theme];
-    const nextState: GameState = {
-      phase: 'playing',
-      character,
-      log: [
-        makeLogEntry('system', `You are ${character.name}, ${character.levelTitle}.`),
-        makeLogEntry('narrative', openingText),
-      ],
-      currentChoices: choices,
-      contract: CONTRACTS[0],
-    };
-    stateRef.current = nextState;
-    setState(nextState);
+  const startGame = useCallback(
+    (character: Character, contractIndex = 0) => {
+      historyRef.current = [];
+      turnCountRef.current = 0;
+      clearSave();
+      const openingText = OPENING_NARRATIVES[character.theme];
+      const choices = MOCK_CHOICES[character.theme];
+      const contract = CONTRACTS[Math.min(contractIndex, CONTRACTS.length - 1)];
+      const nextState: GameState = {
+        phase: 'playing',
+        character,
+        log: [
+          makeLogEntry('system', `You are ${character.name}, ${character.levelTitle}.`),
+          makeLogEntry('narrative', openingText),
+        ],
+        currentChoices: choices,
+        contract,
+      };
+      stateRef.current = nextState;
+      setState(nextState);
+      setHasSave(false);
+    },
+    []
+  );
+
+  // ── Dismiss save / new game ────────────────────────────────────────────────
+  const dismissSave = useCallback(() => {
+    clearSave();
+    stateRef.current = INITIAL_STATE;
+    setState(INITIAL_STATE);
+    setHasSave(false);
   }, []);
 
   // ── Call Gemini API ────────────────────────────────────────────────────────
@@ -138,6 +195,9 @@ export function useGameStore() {
         historyRef.current.push({ role: 'player', text: choice });
         historyRef.current.push({ role: 'narrator', text: result.narrative });
 
+        // Increment turn counter
+        turnCountRef.current += 1;
+
         setStateSynced((prev) => {
           if (!prev.character) return prev;
 
@@ -177,6 +237,16 @@ export function useGameStore() {
             currentChoices: result.choices,
           };
         });
+
+        // ── Chronicle trigger: tension cap OR max turns ──────────────────────
+        const currentTension = stateRef.current.character?.tension ?? 0;
+        if (
+          currentTension >= CHRONICLE_TENSION_THRESHOLD ||
+          turnCountRef.current >= MAX_TURNS
+        ) {
+          // Small delay so final narrative renders first
+          setTimeout(() => triggerChronicle(), 1200);
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Unknown error';
         setError(msg);
@@ -189,7 +259,7 @@ export function useGameStore() {
         setIsLoading(false);
       }
     },
-    [isLoading, callGemini, setStateSynced]
+    [isLoading, callGemini, setStateSynced, triggerChronicle]
   );
 
   // ── Submit custom action ───────────────────────────────────────────────────
@@ -234,11 +304,15 @@ export function useGameStore() {
     isLoading,
     error,
     sceneMeta,
+    hasSave,
     startGame,
+    dismissSave,
     makeChoice,
     submitCustomAction,
     randomizeCharacter,
+    triggerChronicle,
     ARCHETYPES,
     SCARS,
+    CONTRACTS,
   };
 }

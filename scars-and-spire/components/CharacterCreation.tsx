@@ -1,20 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import type { Character, Theme } from '@/types/game';
+import type { Character, Contract, Theme } from '@/types/game';
 import { LEVEL_TITLES } from '@/types/game';
-import { getArchetypesByTheme, getScarsByTheme } from '@/lib/gameData';
+import { getArchetypesByTheme, getScarsByTheme, CONTRACTS } from '@/lib/gameData';
 
 interface CharacterCreationProps {
-  onComplete: (character: Character) => void;
+  onComplete: (character: Character, contractIndex?: number) => void;
   onRandomize: (theme: Theme) => Partial<Character>;
+  contracts?: Contract[];
 }
 
-export default function CharacterCreation({ onComplete, onRandomize }: CharacterCreationProps) {
+export default function CharacterCreation({ onComplete, onRandomize, contracts = CONTRACTS }: CharacterCreationProps) {
   const [theme, setTheme] = useState<Theme>('dark-fantasy');
   const [name, setName] = useState('');
   const [selectedArchetypeId, setSelectedArchetypeId] = useState<string>('');
   const [selectedScarId, setSelectedScarId] = useState<string>('');
+  const [selectedContractIdx, setSelectedContractIdx] = useState<number>(0);
   const [nameError, setNameError] = useState(false);
   const [selectionError, setSelectionError] = useState(false);
 
@@ -59,7 +61,7 @@ export default function CharacterCreation({ onComplete, onRandomize }: Character
       ],
     };
 
-    onComplete(character);
+    onComplete(character, selectedContractIdx);
   };
 
   const isDark = theme === 'dark-fantasy';
@@ -172,6 +174,36 @@ export default function CharacterCreation({ onComplete, onRandomize }: Character
           {selectionError && (
             <p className="text-xs text-crimson mt-2">Select both an archetype and a scar to continue.</p>
           )}
+        </section>
+
+        {/* ── Contract Tier ─────────────────────────────── */}
+        <section className="card">
+          <label className="section-label">Contract Tier</label>
+          <p className="text-xs text-muted mb-3">Higher tiers multiply tension and reward — but mercy is scarce.</p>
+          <div className="space-y-2">
+            {contracts.map((c, idx) => (
+              <button
+                key={c.tier}
+                id={`contract-tier-${c.tier}`}
+                onClick={() => setSelectedContractIdx(idx)}
+                className={`option-card ${selectedContractIdx === idx ? 'option-card--selected' : ''}`}
+              >
+                <span className="text-xl shrink-0">
+                  {c.tier === 'I' ? '📜' : c.tier === 'II' ? '🩸' : '🌑'}
+                </span>
+                <span className="flex flex-col items-start gap-0.5">
+                  <span className="font-semibold text-bone text-sm">Tier {c.tier} · {c.label}</span>
+                  <span className="text-xs text-muted text-left leading-relaxed">{c.description}</span>
+                  {c.rewardBonus !== 'None' && (
+                    <span className="text-xs text-gold mt-1">Bonus: {c.rewardBonus}</span>
+                  )}
+                </span>
+                {selectedContractIdx === idx && (
+                  <span className="ml-auto text-crimson shrink-0">✦</span>
+                )}
+              </button>
+            ))}
+          </div>
         </section>
 
         {/* ── Actions ──────────────────────────────────── */}

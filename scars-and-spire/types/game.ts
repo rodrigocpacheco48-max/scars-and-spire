@@ -80,7 +80,7 @@ export interface LogEntry {
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 
-export type GamePhase = 'creation' | 'playing';
+export type GamePhase = 'creation' | 'playing' | 'chronicle';
 
 export interface GameState {
   phase: GamePhase;
@@ -88,6 +88,7 @@ export interface GameState {
   log: LogEntry[];
   currentChoices: string[];
   contract: Contract | null;
+  saveVersion?: number;
 }
 
 // ─── Level Titles ─────────────────────────────────────────────────────────────
