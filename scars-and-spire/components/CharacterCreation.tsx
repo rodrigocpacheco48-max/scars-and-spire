@@ -120,8 +120,27 @@ export default function CharacterCreation({ onComplete, onRandomize, contracts =
     <div className="min-h-screen bg-void text-ash flex flex-col items-center justify-center px-4 py-12">
       {/* Header */}
       <div className="text-center mb-10">
-        <div className="text-5xl mb-3">⚰️</div>
-        <h1 className="text-4xl font-display font-bold text-bone tracking-widest uppercase">
+        <div className="mb-3 flex justify-center text-red-700">
+          <svg
+            width="64"
+            height="64"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="drop-shadow-lg"
+          >
+            {/* Guarda da espada em cruz com detalhes */}
+            <path d="M12 2v20" />
+            <path d="M8 5s3-2 4-2 4 2 4 2" />
+            <path d="M5 9h14" />
+            <path d="M8 19h8" />
+            {/* Ponta da espada */}
+            <path d="M12 2v5" />
+          </svg>
+        </div>        <h1 className="text-4xl font-display font-bold text-bone tracking-widest uppercase">
           Scars <span className="text-crimson">&</span> Spire
         </h1>
         <p className="text-sm text-muted mt-2 tracking-widest uppercase">Character Creation</p>
