@@ -1,8 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import CharacterCreation from '@/components/CharacterCreation';
-import Topbar from '@/components/Topbar';
+import dynamic from 'next/dynamic';
+
+const CharacterCreation = dynamic(
+  () => import('@/components/CharacterCreation'),
+  { ssr: false }
+); import Topbar from '@/components/Topbar';
 import StoryLog from '@/components/StoryLog';
 import ActionDock from '@/components/ActionDock';
 import PixelScene from '@/components/PixelScene';
