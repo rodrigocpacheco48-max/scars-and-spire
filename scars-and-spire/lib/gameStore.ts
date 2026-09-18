@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import type { GameState, Character, LogEntry, Tag } from '@/types/game';
+import type { GameState, Character, LogEntry, Tag, SceneMeta } from '@/types/game';
 import { LEVEL_TITLES } from '@/types/game';
 import {
   ARCHETYPES,
@@ -47,6 +47,7 @@ export function useGameStore() {
   const [state, setState] = useState<GameState>(INITIAL_STATE);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sceneMeta, setSceneMeta] = useState<SceneMeta | null>(null);
 
   // Always-current ref so async callbacks don't close over stale state
   const stateRef = useRef<GameState>(INITIAL_STATE);
@@ -129,6 +130,9 @@ export function useGameStore() {
         // Read current state from ref (always up-to-date)
         const result = await callGemini(choice, stateRef.current);
         if (!result) return;
+
+        // Update scene meta from this turn
+        if (result.sceneMeta) setSceneMeta(result.sceneMeta);
 
         // Push to sliding window
         historyRef.current.push({ role: 'player', text: choice });
@@ -229,6 +233,7 @@ export function useGameStore() {
     state,
     isLoading,
     error,
+    sceneMeta,
     startGame,
     makeChoice,
     submitCustomAction,

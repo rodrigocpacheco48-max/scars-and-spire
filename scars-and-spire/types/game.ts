@@ -59,6 +59,14 @@ export interface Contract {
   rewardBonus: string;
 }
 
+// ─── Scene Meta (returned by Gemini each turn) ────────────────────────────────
+
+export interface SceneMeta {
+  biome: string;
+  lighting: string;
+  weather: string;
+}
+
 // ─── Story / Narrative ────────────────────────────────────────────────────────
 
 export type LogEntryKind = 'narrative' | 'choice' | 'system' | 'consequence';
