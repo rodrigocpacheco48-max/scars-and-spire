@@ -248,9 +248,14 @@ export function useGameStore() {
     []
   );
 
+  const abandonRun = useCallback(() => {
+    setState(INITIAL_STATE);
+  }, []);
+
   return {
     state,
     startGame,
+    abandonRun,
     makeChoice,
     submitCustomAction,
     randomizeCharacter,

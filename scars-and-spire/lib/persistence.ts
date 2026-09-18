@@ -3,9 +3,57 @@
 
 import type { GameState, Character } from '@/types/game';
 
-const KEY_SAVE    = 'ss_save';
-const KEY_IMPORT  = 'ss_import';
-const SAVE_VERSION = 1;
+const KEY_SAVE       = 'ss_save';
+const KEY_ACTIVE_RUN = 'scars_active_run';
+const KEY_IMPORT     = 'ss_import';
+const KEY_GRAVEYARD  = 'scars_graveyard';
+const SAVE_VERSION   = 1;
+
+// ─── Graveyard ────────────────────────────────────────────────────────────────
+
+export interface GraveyardEntry {
+  id: string;
+  character: Character;
+  contractLabel: string;
+  contractTier: string;
+  causeOfDeath: string;
+  timestamp: number;
+}
+
+export function logToGraveyard(
+  character: Character,
+  contractLabel = 'Unknown Contract',
+  contractTier = 'I',
+  cause = 'Abandoned to the Void'
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(KEY_GRAVEYARD);
+    const entries: GraveyardEntry[] = raw ? JSON.parse(raw) : [];
+    const newEntry: GraveyardEntry = {
+      id: Math.random().toString(36).slice(2, 9),
+      character,
+      contractLabel,
+      contractTier,
+      causeOfDeath: cause,
+      timestamp: Date.now(),
+    };
+    entries.unshift(newEntry);
+    localStorage.setItem(KEY_GRAVEYARD, JSON.stringify(entries));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getGraveyard(): GraveyardEntry[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(KEY_GRAVEYARD);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
 // ─── Serialisation ────────────────────────────────────────────────────────────
 
@@ -14,6 +62,7 @@ export function saveGame(state: GameState): void {
   try {
     const payload = JSON.stringify({ ...state, saveVersion: SAVE_VERSION });
     localStorage.setItem(KEY_SAVE, payload);
+    localStorage.setItem(KEY_ACTIVE_RUN, payload);
   } catch {
     // Quota exceeded or private browsing — silently ignore
   }
@@ -22,7 +71,7 @@ export function saveGame(state: GameState): void {
 export function loadGame(): GameState | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(KEY_SAVE);
+    const raw = localStorage.getItem(KEY_SAVE) || localStorage.getItem(KEY_ACTIVE_RUN);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as GameState & { saveVersion?: number };
     // Reject saves from incompatible versions
@@ -37,7 +86,10 @@ export function loadGame(): GameState | null {
 
 export function clearSave(): void {
   if (typeof window === 'undefined') return;
-  try { localStorage.removeItem(KEY_SAVE); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(KEY_SAVE);
+    localStorage.removeItem(KEY_ACTIVE_RUN);
+  } catch { /* ignore */ }
 }
 
 // ─── Character Import (carry-over to higher-tier contracts) ───────────────────

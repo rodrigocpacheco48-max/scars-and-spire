@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Character, Contract, Theme } from '@/types/game';
+import type { Archetype, Character, Contract, Scar, Theme } from '@/types/game';
 import { LEVEL_TITLES } from '@/types/game';
 import { getArchetypesByTheme, getScarsByTheme, CONTRACTS } from '@/lib/gameData';
 
@@ -9,6 +9,29 @@ interface CharacterCreationProps {
   onComplete: (character: Character, contractIndex?: number) => void;
   onRandomize: (theme: Theme) => Partial<Character>;
   contracts?: Contract[];
+}
+
+const DRAFT_ARCHETYPE_COUNT = 3;
+const DRAFT_SCAR_COUNT = 4;
+
+function shuffleArray<T>(array: T[]): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function draftOfferings(targetTheme: Theme) {
+  const allArchetypes = getArchetypesByTheme(targetTheme);
+  const allScars = getScarsByTheme(targetTheme);
+  return {
+    archetypes: shuffleArray(allArchetypes).slice(0, DRAFT_ARCHETYPE_COUNT),
+    scars: shuffleArray(allScars).slice(0, DRAFT_SCAR_COUNT),
+    totalArchetypes: allArchetypes.length,
+    totalScars: allScars.length,
+  };
 }
 
 export default function CharacterCreation({ onComplete, onRandomize, contracts = CONTRACTS }: CharacterCreationProps) {
@@ -20,20 +43,42 @@ export default function CharacterCreation({ onComplete, onRandomize, contracts =
   const [nameError, setNameError] = useState(false);
   const [selectionError, setSelectionError] = useState(false);
 
-  const archetypes = getArchetypesByTheme(theme);
-  const scars = getScarsByTheme(theme);
+  // Dynamic offered draft pools
+  const [draftState, setDraftState] = useState(() => draftOfferings('dark-fantasy'));
+  const offeredArchetypes = draftState.archetypes;
+  const offeredScars = draftState.scars;
 
   const handleThemeSwitch = (newTheme: Theme) => {
     setTheme(newTheme);
+    setDraftState(draftOfferings(newTheme));
     setSelectedArchetypeId('');
     setSelectedScarId('');
+  };
+
+  const handleReshuffleOfferings = () => {
+    const fresh = draftOfferings(theme);
+    setDraftState(fresh);
+
+    // Deselect if currently selected item is no longer in the newly drafted pool
+    if (!fresh.archetypes.some((a) => a.id === selectedArchetypeId)) {
+      setSelectedArchetypeId('');
+    }
+    if (!fresh.scars.some((s) => s.id === selectedScarId)) {
+      setSelectedScarId('');
+    }
   };
 
   const handleQuickFate = () => {
     const randomized = onRandomize(theme);
     if (randomized.name) setName(randomized.name);
-    if (randomized.archetypeId) setSelectedArchetypeId(randomized.archetypeId);
-    if (randomized.scarId) setSelectedScarId(randomized.scarId);
+
+    // Select from current drafted offerings
+    const currentArchetype = offeredArchetypes[Math.floor(Math.random() * offeredArchetypes.length)];
+    const currentScar = offeredScars[Math.floor(Math.random() * offeredScars.length)];
+
+    if (currentArchetype) setSelectedArchetypeId(currentArchetype.id);
+    if (currentScar) setSelectedScarId(currentScar.id);
+
     setNameError(false);
     setSelectionError(false);
   };
@@ -44,8 +89,13 @@ export default function CharacterCreation({ onComplete, onRandomize, contracts =
     if (!selectedArchetypeId || !selectedScarId) { setSelectionError(true); valid = false; }
     if (!valid) return;
 
-    const archetype = archetypes.find((a) => a.id === selectedArchetypeId)!;
-    const scar = scars.find((s) => s.id === selectedScarId)!;
+    const allArchetypes = getArchetypesByTheme(theme);
+    const allScars = getScarsByTheme(theme);
+
+    const archetype = offeredArchetypes.find((a) => a.id === selectedArchetypeId)
+      || allArchetypes.find((a) => a.id === selectedArchetypeId)!;
+    const scar = offeredScars.find((s) => s.id === selectedScarId)
+      || allScars.find((s) => s.id === selectedScarId)!;
 
     const character: Character = {
       name: name.trim(),
@@ -120,9 +170,14 @@ export default function CharacterCreation({ onComplete, onRandomize, contracts =
 
         {/* ── Archetype Selection ──────────────────────── */}
         <section className="card">
-          <label className="section-label">Choose Your Archetype</label>
+          <div className="flex items-center justify-between">
+            <label className="section-label">Choose Your Archetype</label>
+            <span className="text-xs text-muted">
+              Offered {offeredArchetypes.length} of {draftState.totalArchetypes}
+            </span>
+          </div>
           <div className="space-y-2 mt-3">
-            {archetypes.map((arch) => (
+            {offeredArchetypes.map((arch) => (
               <button
                 key={arch.id}
                 id={`arch-${arch.id}`}
@@ -147,10 +202,15 @@ export default function CharacterCreation({ onComplete, onRandomize, contracts =
 
         {/* ── Scar Selection ───────────────────────────── */}
         <section className="card">
-          <label className="section-label">Choose Your Scar</label>
+          <div className="flex items-center justify-between">
+            <label className="section-label">Choose Your Scar</label>
+            <span className="text-xs text-muted">
+              Offered {offeredScars.length} of {draftState.totalScars}
+            </span>
+          </div>
           <p className="text-xs text-muted mb-3">Scars shape who you are — for better and worse.</p>
           <div className="space-y-2">
-            {scars.map((scar) => (
+            {offeredScars.map((scar) => (
               <button
                 key={scar.id}
                 id={`scar-${scar.id}`}
@@ -207,7 +267,15 @@ export default function CharacterCreation({ onComplete, onRandomize, contracts =
         </section>
 
         {/* ── Actions ──────────────────────────────────── */}
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            id="reshuffle-offerings-btn"
+            onClick={handleReshuffleOfferings}
+            className="fate-btn border-purple-900/50 hover:border-purple-600 text-purple-200"
+            title="Reshuffle fate offerings"
+          >
+            🔮 Reshuffle Offerings
+          </button>
           <button
             id="quick-fate-btn"
             onClick={handleQuickFate}
@@ -228,3 +296,4 @@ export default function CharacterCreation({ onComplete, onRandomize, contracts =
     </div>
   );
 }
+

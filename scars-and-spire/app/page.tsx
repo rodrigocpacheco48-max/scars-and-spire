@@ -20,6 +20,7 @@ export default function Home() {
     hasSave,
     startGame,
     dismissSave,
+    abandonRun,
     makeChoice,
     submitCustomAction,
     randomizeCharacter,
@@ -92,6 +93,7 @@ export default function Home() {
       <Topbar
         character={state.character!}
         onOpenCodex={() => setCodexOpen(true)}
+        onAbandonRun={abandonRun}
       />
 
       {/* Procedural pixel scene — updates from Gemini sceneMeta each turn */}

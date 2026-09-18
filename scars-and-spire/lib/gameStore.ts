@@ -12,7 +12,7 @@ import {
   getArchetypesByTheme,
   getScarsByTheme,
 } from '@/lib/gameData';
-import { saveGame, loadGame, clearSave } from '@/lib/persistence';
+import { saveGame, loadGame, clearSave, logToGraveyard } from '@/lib/persistence';
 import type { TurnRequestBody, TurnResponse } from '@/app/api/game/turn/route';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -136,6 +136,26 @@ export function useGameStore() {
     stateRef.current = INITIAL_STATE;
     setState(INITIAL_STATE);
     setHasSave(false);
+  }, []);
+
+  // ── Abandon Run (Forfeit / Reset Run) ──────────────────────────────────────
+  const abandonRun = useCallback(() => {
+    if (stateRef.current.character) {
+      logToGraveyard(
+        stateRef.current.character,
+        stateRef.current.contract?.label ?? 'Unknown Contract',
+        stateRef.current.contract?.tier ?? 'I',
+        'Abandoned to the Void'
+      );
+    }
+    clearSave();
+    historyRef.current = [];
+    turnCountRef.current = 0;
+    stateRef.current = INITIAL_STATE;
+    setState(INITIAL_STATE);
+    setHasSave(false);
+    setSceneMeta(null);
+    setError(null);
   }, []);
 
   // ── Call Gemini API ────────────────────────────────────────────────────────
@@ -307,6 +327,7 @@ export function useGameStore() {
     hasSave,
     startGame,
     dismissSave,
+    abandonRun,
     makeChoice,
     submitCustomAction,
     randomizeCharacter,
@@ -316,3 +337,5 @@ export function useGameStore() {
     CONTRACTS,
   };
 }
+
+export const useGameEngine = useGameStore;
