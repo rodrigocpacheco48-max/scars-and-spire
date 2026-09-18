@@ -714,3 +714,43 @@ body {
   .action-dock { padding: 12px 14px 16px; }
   .card { padding: 16px; }
 }
+
+/* ─── Typing Indicator (Gemini generating) ───────────────────────────────────── */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 2px;
+}
+
+.typing-indicator span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-crimson);
+  opacity: 0.8;
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+  40%            { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ─── API Error Banner ────────────────────────────────────────────────────────── */
+.api-error-banner {
+  margin: 0 auto;
+  max-width: 720px;
+  padding: 8px 16px;
+  background: rgba(192, 36, 60, 0.12);
+  border: 1px solid var(--color-crimson-dim);
+  border-radius: var(--radius-md);
+  color: var(--color-crimson);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
